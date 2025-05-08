@@ -1,0 +1,71 @@
+CS 4760 - Operating Systems - Assignment #6
+Memory Management with LRU Page Replacement
+Overview
+This project implements a memory management system with paging and page replacement using the Least Recently Used (LRU) algorithm. The system consists of an Operating System Simulator (OSS) that manages memory requests from multiple user processes.
+Components
+
+oss.h: Header file containing shared structures and constants
+oss.c: Operating System Simulator implementation
+user.c: User process implementation
+Makefile: For compiling the project
+
+Features
+
+Simulates a system with 128K of memory divided into 1K pages
+Implements the LRU page replacement algorithm
+Tracks dirty bits for optimizing page replacement
+Processes generate random memory references (reads and writes)
+Handles page faults and page replacements
+Tracks memory accesses and page faults statistics
+Displays memory map periodically showing the state of frames and page tables
+
+How to Compile
+make
+
+How to Run
+./oss [-h] [-n proc] [-s simul] [-i intervalInMsToLaunchChildren] [-f logfile]
+
+Options:
+
+-h: Display help message
+-n proc: Total number of processes to launch (default: 100)
+-s simul: Maximum number of concurrent processes (default: 18)
+-i interval: Interval in ms to launch processes (default: 1000)
+-f logfile: Log file name (default: oss.log)
+
+Implementation Details
+Memory Structure
+
+Total memory: 128K
+Page size: 1K
+Total frames: 128
+Each process has 32K of virtual memory (32 pages)
+
+Page Replacement Algorithm
+The system implements the Least Recently Used (LRU) page replacement algorithm. When a page fault occurs and there are no empty frames available, the frame that has been least recently used is selected for replacement.
+Dirty Bit Optimization
+Each frame has a dirty bit that is set when a process writes to that frame. When replacing a page with its dirty bit set, additional time is added to simulate writing the page back to disk before loading the new page.
+Communication
+User processes communicate with OSS through message queues. They request memory addresses for read or write operations, and OSS responds based on whether the page is in memory or needs to be loaded.
+Statistics
+The program tracks:
+
+Number of memory accesses per second
+Number of page faults per memory access
+Effective memory access time for each process
+
+Output
+The program generates detailed logging information showing:
+
+Memory requests from user processes
+Page faults and replacements
+Memory maps at regular intervals showing the state of each frame
+Process page tables
+Statistics about memory access and page faults
+
+Termination
+The system terminates after 100 processes have been created or after 5 real-life seconds. Signal handlers are implemented to ensure proper cleanup of resources in case of abnormal termination.
+
+Cleaning Up
+make clean
+This removes all object files, executables, and log files.
