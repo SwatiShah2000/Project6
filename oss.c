@@ -107,12 +107,12 @@ void displayMemoryMap(FILE *logfile) {
             shm->clock.seconds, shm->clock.nanoseconds);
     fprintf(stdout, "Current memory layout at time %u:%u is:\n",
             shm->clock.seconds, shm->clock.nanoseconds);
-    
+
     fprintf(logfile, "%-8s %-10s %-10s %-10s %-10s\n",
             "Frame", "Occupied", "DirtyBit", "LastRefS", "LastRefNano");
     fprintf(stdout, "%-8s %-10s %-10s %-10s %-10s\n",
             "Frame", "Occupied", "DirtyBit", "LastRefS", "LastRefNano");
-    
+
     for (int i = 0; i < TOTAL_FRAMES; i++) {
         fprintf(logfile, "Frame %-3d: %-10s %-10d %-10u %-10u\n",
                 i,
@@ -127,18 +127,18 @@ void displayMemoryMap(FILE *logfile) {
                 shm->frameTable[i].lastRefSec,
                 shm->frameTable[i].lastRefNano);
     }
-    
+
     // Display page tables for each active process
     for (int i = 0; i < MAX_PROC; i++) {
         if (shm->processes[i].state != UNUSED) {
             fprintf(logfile, "P%d page table: [ ", i);
             fprintf(stdout, "P%d page table: [ ", i);
-            
+
             for (int j = 0; j < PAGES_PER_PROC; j++) {
                 fprintf(logfile, "%d ", shm->processes[i].pageTable[j]);
                 fprintf(stdout, "%d ", shm->processes[i].pageTable[j]);
             }
-            
+
             fprintf(logfile, "]\n");
             fprintf(stdout, "]\n");
         }
@@ -150,17 +150,17 @@ void displayMemoryMap(FILE *logfile) {
 // Function to handle page fault
 void handlePageFault(int procIndex, int page, bool isWrite) {
     int frameIndex;
-    
+
     // Find an empty frame or use LRU
     frameIndex = findEmptyFrame();
     if (frameIndex == -1) {
         // No empty frame, use LRU
         frameIndex = findLRUFrame();
-        
+
         // Get the process and page using this frame
         int oldPid = shm->frameTable[frameIndex].pid;
         int oldPage = shm->frameTable[frameIndex].page;
-        
+
         // Find the PCB index for this process
         int oldProcIndex = -1;
         for (int i = 0; i < MAX_PROC; i++) {
@@ -169,29 +169,29 @@ void handlePageFault(int procIndex, int page, bool isWrite) {
                 break;
             }
         }
-        
+
         if (oldProcIndex != -1) {
             // Update the page table of the process that was using this frame
             shm->processes[oldProcIndex].pageTable[oldPage] = -1;
         }
-        
+
         fprintf(logfile, "oss: Clearing frame %d and swapping in p%d page %d\n",
                 frameIndex, procIndex, page);
         fprintf(stdout, "oss: Clearing frame %d and swapping in p%d page %d\n",
                 frameIndex, procIndex, page);
-        
+
         // Check if the frame is dirty
         if (shm->frameTable[frameIndex].dirtyBit) {
             fprintf(logfile, "oss: Dirty bit of frame %d set, adding additional time to the clock\n",
                     frameIndex);
             fprintf(stdout, "oss: Dirty bit of frame %d set, adding additional time to the clock\n",
                     frameIndex);
-            
+
             // Extra time for writing back a dirty page (additional to the normal page fault time)
             incrementClock(&shm->clock, 10000000);  // 10ms extra for writing back
         }
     }
-    
+
     // Update frame table
     shm->frameTable[frameIndex].occupied = true;
     shm->frameTable[frameIndex].pid = shm->processes[procIndex].pid;
@@ -199,13 +199,13 @@ void handlePageFault(int procIndex, int page, bool isWrite) {
     shm->frameTable[frameIndex].dirtyBit = isWrite;  // Set dirty bit if it's a write
     shm->frameTable[frameIndex].lastRefSec = shm->clock.seconds;
     shm->frameTable[frameIndex].lastRefNano = shm->clock.nanoseconds;
-    
+
     // Update page table
     shm->processes[procIndex].pageTable[page] = frameIndex;
-    
+
     // Increment page fault counter
     shm->processes[procIndex].pageFaults++;
-    
+
     // Simulate the time for page fault (disk read)
     incrementClock(&shm->clock, 14000000);  // 14ms for disk read
 }
@@ -215,10 +215,10 @@ void handleMemoryRequest(int procIndex, int address, bool isWrite) {
     // Extract page number and offset
     int page = address / PAGE_SIZE;
     int offset = address % PAGE_SIZE;
-    
+
     // Check if the page is in memory
     int frameIndex = shm->processes[procIndex].pageTable[page];
-    
+
     if (frameIndex == -1) {
         // Page fault
         fprintf(logfile, "oss: P%d requesting %s of address %d at time %u:%u\n",
@@ -227,32 +227,32 @@ void handleMemoryRequest(int procIndex, int address, bool isWrite) {
         fprintf(stdout, "oss: P%d requesting %s of address %d at time %u:%u\n",
                 procIndex, isWrite ? "write" : "read", address,
                 shm->clock.seconds, shm->clock.nanoseconds);
-        
+
         fprintf(logfile, "oss: Address %d is not in a frame, pagefault\n", address);
         fprintf(stdout, "oss: Address %d is not in a frame, pagefault\n", address);
-        
+
         // Handle page fault
         handlePageFault(procIndex, page, isWrite);
-        
+
         // Get the updated frame index
         frameIndex = shm->processes[procIndex].pageTable[page];
     } else {
         // Page hit, update LRU timestamp
         shm->frameTable[frameIndex].lastRefSec = shm->clock.seconds;
         shm->frameTable[frameIndex].lastRefNano = shm->clock.nanoseconds;
-        
+
         // Update dirty bit if it's a write
         if (isWrite) {
             shm->frameTable[frameIndex].dirtyBit = true;
         }
-        
+
         fprintf(logfile, "oss: P%d requesting %s of address %d at time %u:%u\n",
                 procIndex, isWrite ? "write" : "read", address,
                 shm->clock.seconds, shm->clock.nanoseconds);
         fprintf(stdout, "oss: P%d requesting %s of address %d at time %u:%u\n",
                 procIndex, isWrite ? "write" : "read", address,
                 shm->clock.seconds, shm->clock.nanoseconds);
-        
+
         fprintf(logfile, "oss: Address %d in frame %d, %s at time %u:%u\n",
                 address, frameIndex,
                 isWrite ? "writing data to frame" : "giving data to P",
@@ -261,11 +261,11 @@ void handleMemoryRequest(int procIndex, int address, bool isWrite) {
                 address, frameIndex,
                 isWrite ? "writing data to frame" : "giving data to P",
                 shm->clock.seconds, shm->clock.nanoseconds);
-        
+
         // Increment clock for memory access
         incrementClock(&shm->clock, 100);  // 100ns for memory access
     }
-    
+
     // Increment memory access counter
     shm->processes[procIndex].totalMemoryAccesses++;
 }
@@ -278,20 +278,20 @@ void terminateProcess(int procIndex) {
         effectiveAccessTime = (double)shm->processes[procIndex].pageFaults /
                              shm->processes[procIndex].totalMemoryAccesses;
     }
-    
+
     fprintf(logfile, "oss: Process P%d terminating at time %u:%u\n",
             procIndex, shm->clock.seconds, shm->clock.nanoseconds);
     fprintf(stdout, "oss: Process P%d terminating at time %u:%u\n",
             procIndex, shm->clock.seconds, shm->clock.nanoseconds);
-    
+
     fprintf(logfile, "oss: Process P%d statistics:\n", procIndex);
     fprintf(stdout, "oss: Process P%d statistics:\n", procIndex);
-    
+
     fprintf(logfile, "      Total memory accesses: %d\n",
             shm->processes[procIndex].totalMemoryAccesses);
     fprintf(stdout, "      Total memory accesses: %d\n",
             shm->processes[procIndex].totalMemoryAccesses);
-    
+
     fprintf(logfile, "      Total page faults: %d\n",
             shm->processes[procIndex].pageFaults);
     fprintf(stdout, "      Total page faults: %d\n",
