@@ -1,97 +1,100 @@
-#ifndef OSS_H
-#define OSS_H
+// user.c - User process for memory management simulation
+#include "oss.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/msg.h>
-#include <sys/wait.h>
-#include <signal.h>
-#include <errno.h>
-#include <time.h>
-#include <string.h>
-#include <stdbool.h>
-#include <limits.h>
-
-#define SHM_KEY 0x1234
-#define MSG_KEY 0x5678
-#define PERMS 0644
-
-#define MAX_PROC 18
-#define TOTAL_PROC 100
-#define MEMORY_SIZE 131072
-#define PAGE_SIZE 1024
-#define TOTAL_FRAMES 128
-#define PAGES_PER_PROC 32
-
-// Process states
-#define UNUSED 0
-#define RUNNING 1
-#define BLOCKED 2
-#define TERMINATED 3
-
-// Message types
-#define REQUEST 1
-#define RESPONSE 2
-#define TERMINATE 3
-
-// Shared clock structure
-typedef struct {
-    unsigned int seconds;
-    unsigned int nanoseconds;
-} SimClock;
-
-// Frame table entry
-typedef struct {
-    bool occupied;
-    int pid;
-    int page;
-    bool dirtyBit;
-    unsigned int lastRefSec;
-    unsigned int lastRefNano;
-} FrameTableEntry;
-
-// Page table entry
-typedef struct {
-    int frame;
-} PageTableEntry;
-
-// Process control block
-typedef struct {
-    int pid;
-    int state;
-    int pageTable[PAGES_PER_PROC];
-    int totalMemoryAccesses;
-    int pageFaults;
-    unsigned int startSec;
-    unsigned int startNano;
-} PCB;
-
-// Message structure for memory requests
-typedef struct {
-    long mtype;
-    int pid;
-    int address;
-    bool isWrite;
-    bool terminated;
-} Message;
-
-// Shared memory structure
-typedef struct {
-    SimClock clock;
-    PCB processes[MAX_PROC];
-    FrameTableEntry frameTable[TOTAL_FRAMES];
-    int activeProcesses;
-} SharedMemory;
-
-// Function prototypes
-void incrementClock(SimClock *clock, unsigned int nanoseconds);
-void displayMemoryMap(FILE *logfile);
-int findLRUFrame();
-void initSharedMemory(SharedMemory *shm);
-void cleanupResources(int shmid, int msqid);
-
-#endif
+int main(int argc, char *argv[]) {
+    // Check arguments
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s <process_index> <shmid>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    
+    int procIndex = atoi(argv[1]);
+    int shmid = atoi(argv[2]);
+    
+    fprintf(stderr, "User process %d starting with shmid %d\n", procIndex, shmid);
+    
+    // Attach to shared memory using the ID passed from parent
+    SharedMemory *shm = (SharedMemory *)shmat(shmid, NULL, 0);
+    if (shm == (void *)-1) {
+        perror("Failed to attach to shared memory");
+        exit(EXIT_FAILURE);
+    }
+    
+    // Get message queue
+    int msqid = msgget(MSG_KEY, 0);
+    if (msqid < 0) {
+        perror("Failed to get message queue");
+        shmdt(shm);
+        exit(EXIT_FAILURE);
+    }
+    
+    // Set up random number generator
+    srand(getpid());
+    
+    // Get my process id from the PCB
+    pid_t pid = getpid();
+    
+    // Main loop for memory requests
+    int memoryReferences = 0;
+    int terminationCheck = (rand() % 200) + 900;  // Check termination every 900-1100 refs
+    
+    while (1) {
+        // Generate memory address to request
+        int page = rand() % PAGES_PER_PROC;
+        int offset = rand() % PAGE_SIZE;
+        int address = (page * PAGE_SIZE) + offset;
+        
+        // Determine if it's a read or write (bias towards reads)
+        bool isWrite = (rand() % 100) < 30;  // 30% chance of write
+        
+        // Prepare message
+        Message msg;
+        msg.mtype = REQUEST;
+        msg.pid = pid;
+        msg.address = address;
+        msg.isWrite = isWrite;
+        msg.terminated = false;
+        
+        // Send memory request to oss
+        if (msgsnd(msqid, &msg, sizeof(Message) - sizeof(long), 0) < 0) {
+            perror("Failed to send request message");
+            break;
+        }
+        
+        // Wait for response from oss
+        if (msgrcv(msqid, &msg, sizeof(Message) - sizeof(long), RESPONSE, 0) < 0) {
+            perror("Failed to receive response message");
+            break;
+        }
+        
+        // Increment memory reference counter
+        memoryReferences++;
+        
+        // Check if we should terminate
+        if (memoryReferences >= terminationCheck) {
+            if ((rand() % 100) < 30) {  // 30% chance to terminate
+                fprintf(stderr, "User process %d terminating after %d references\n", 
+                        procIndex, memoryReferences);
+                
+                // Send termination message
+                msg.mtype = TERMINATE;
+                msg.pid = pid;
+                msg.terminated = true;
+                
+                if (msgsnd(msqid, &msg, sizeof(Message) - sizeof(long), 0) < 0) {
+                    perror("Failed to send termination message");
+                }
+                
+                break;  // Exit the loop and terminate
+            }
+            
+            // Reset termination check
+            terminationCheck = memoryReferences + (rand() % 200) + 900;
+        }
+    }
+    
+    // Detach from shared memory
+    shmdt(shm);
+    
+    return EXIT_SUCCESS;
+}
