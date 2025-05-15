@@ -43,12 +43,12 @@ int main(int argc, char *argv[]) {
 
     while (1) {
         // Generate memory address to request
-        int page = rand() % PAGES_PER_PROC;  // Random page (0-31)
-        int offset = rand() % PAGE_SIZE;     // Random offset (0-1023)
+        int page = rand() % PAGES_PER_PROC;
+        int offset = rand() % PAGE_SIZE;
         int address = (page * PAGE_SIZE) + offset;
 
         // Determine if it's a read or write (bias towards reads)
-        bool isWrite = (rand() % 100) < 30;  // 30% chance of write
+        bool isWrite = (rand() % 100) < 30;
 
         // Prepare message
         Message msg;
@@ -75,8 +75,7 @@ int main(int argc, char *argv[]) {
 
         // Check if we should terminate
         if (memoryReferences >= terminationCheck) {
-            if ((rand() % 100) < 30) {  // 30% chance to terminate
-                // Send termination message
+            if ((rand() % 100) < 30) {
                 msg.mtype = TERMINATE;
                 msg.pid = pid;
                 msg.terminated = true;
@@ -85,10 +84,10 @@ int main(int argc, char *argv[]) {
                     perror("Failed to send termination message");
                 }
 
-                break;  // Exit the loop and terminate
+                break;
             }
 
-            // Reset termination check
+
             terminationCheck = memoryReferences + (rand() % 200) + 900;
         }
     }
