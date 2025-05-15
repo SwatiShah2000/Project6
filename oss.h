@@ -46,28 +46,28 @@ typedef struct {
 
 // Frame table entry
 typedef struct {
-    bool occupied;            // Is the frame occupied?
-    int pid;                  // Process ID using this frame
-    int page;                 // Page number stored in this frame
-    bool dirtyBit;            // Has the page been written to?
-    unsigned int lastRefSec;  // Last reference time (seconds)
-    unsigned int lastRefNano; // Last reference time (nanoseconds)
+    bool occupied;
+    int pid;
+    int page;
+    bool dirtyBit;
+    unsigned int lastRefSec;
+    unsigned int lastRefNano;
 } FrameTableEntry;
 
 // Page table entry
 typedef struct {
-    int frame;                // Frame number where this page is stored (-1 if not in memory)
+    int frame;
 } PageTableEntry;
 
 // Process control block
 typedef struct {
-    int pid;                  // Process ID
-    int state;                // Process state
-    int pageTable[PAGES_PER_PROC]; // Page table for the process (stores frame number or -1)
-    int totalMemoryAccesses;  // Total memory accesses by this process
-    int pageFaults;           // Total page faults
-    unsigned int startSec;    // Process start time
-    unsigned int startNano;   // Process start time
+    int pid;
+    int state;
+    int pageTable[PAGES_PER_PROC];
+    int totalMemoryAccesses;
+    int pageFaults;
+    unsigned int startSec;
+    unsigned int startNano;
 } PCB;
 
 // Message structure for memory requests
