@@ -34,8 +34,11 @@ int main(int argc, char *argv[]) {
     // Set up random number generator
     srand(getpid());
 
-    // Get my process id from the PCB
+    // Use procIndex to get our PCB entry and process ID
     pid_t pid = getpid();
+
+    // Log that we're starting (optional, for debugging)
+    fprintf(stderr, "User process %d (PID %d) started\n", procIndex, pid);
 
     // Main loop for memory requests
     int memoryReferences = 0;
@@ -75,7 +78,11 @@ int main(int argc, char *argv[]) {
 
         // Check if we should terminate
         if (memoryReferences >= terminationCheck) {
-            if ((rand() % 100) < 30) {
+            if ((rand() % 100) < 30) {  // 30% chance to terminate
+                // Log that we're terminating (optional)
+                fprintf(stderr, "User process %d (PID %d) terminating after %d references\n",
+                        procIndex, pid, memoryReferences);
+
                 msg.mtype = TERMINATE;
                 msg.pid = pid;
                 msg.terminated = true;
@@ -86,7 +93,6 @@ int main(int argc, char *argv[]) {
 
                 break;
             }
-
 
             terminationCheck = memoryReferences + (rand() % 200) + 900;
         }
