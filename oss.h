@@ -1,4 +1,3 @@
-// oss.h - Header file for shared structures and constants
 #ifndef OSS_H
 #define OSS_H
 
@@ -17,16 +16,16 @@
 #include <stdbool.h>
 #include <limits.h>
 
-#define SHM_KEY 0x1234        // Key for shared memory
-#define MSG_KEY 0x5678        // Key for message queue
-#define PERMS 0644            // Permissions
+#define SHM_KEY 0x1234
+#define MSG_KEY 0x5678
+#define PERMS 0644
 
-#define MAX_PROC 18           // Maximum concurrent processes
-#define TOTAL_PROC 100        // Total process limit
-#define MEMORY_SIZE 131072    // 128K total memory
-#define PAGE_SIZE 1024        // 1K page size
-#define TOTAL_FRAMES 128      // Total frames in memory
-#define PAGES_PER_PROC 32     // Each process has 32K of memory, so 32 pages
+#define MAX_PROC 18
+#define TOTAL_PROC 100
+#define MEMORY_SIZE 131072
+#define PAGE_SIZE 1024
+#define TOTAL_FRAMES 128
+#define PAGES_PER_PROC 32
 
 // Process states
 #define UNUSED 0
@@ -73,11 +72,11 @@ typedef struct {
 
 // Message structure for memory requests
 typedef struct {
-    long mtype;               // Message type
-    int pid;                  // Process ID
-    int address;              // Memory address
-    bool isWrite;             // Read or write operation
-    bool terminated;          // Is the process terminating?
+    long mtype;
+    int pid;
+    int address;
+    bool isWrite;
+    bool terminated;
 } Message;
 
 // Shared memory structure
@@ -85,7 +84,7 @@ typedef struct {
     SimClock clock;
     PCB processes[MAX_PROC];
     FrameTableEntry frameTable[TOTAL_FRAMES];
-    int activeProcesses;      // Number of active processes
+    int activeProcesses;
 } SharedMemory;
 
 // Function prototypes
@@ -95,4 +94,4 @@ int findLRUFrame();
 void initSharedMemory(SharedMemory *shm);
 void cleanupResources(int shmid, int msqid);
 
-#endif // OSS_H
+#endif
